@@ -20,7 +20,7 @@ def text_generation(each_prompt: list):
     :return:
     """
     model_engine = "gpt-3.5-turbo-0613"
-    openai.api_key = "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"
+    openai.api_key = "xxxx"
 
     start_time = time.time()
     completions = openai.ChatCompletion.create(
