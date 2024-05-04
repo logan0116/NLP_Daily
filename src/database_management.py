@@ -11,7 +11,7 @@
 import sqlite3
 
 # 连接到 SQLite 数据库
-conn = sqlite3.connect('mydatabase.db')
+conn = sqlite3.connect('../mydatabase.db')
 
 # 创建一个 Cursor:
 cursor = conn.cursor()

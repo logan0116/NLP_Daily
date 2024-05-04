@@ -9,8 +9,7 @@
 """
 
 import sqlite3
-import torch
-from transformers import AutoTokenizer, AutoModel
+import requests
 from collections import Counter
 
 
@@ -27,40 +26,22 @@ def load_title_abstract(cursor):
     return title_abstract_list
 
 
-def get_embedding(sentences, model, tokenizer):
-    # Tokenize sentences
-    encoded_input = tokenizer(sentences, padding=True, truncation=True, return_tensors='pt', max_length=512)
-    input_ids = encoded_input['input_ids'].cuda()
-    attention_mask = encoded_input['attention_mask'].cuda()
-    token_type_ids = encoded_input['token_type_ids'].cuda()
-    # Compute token embeddings
-    with torch.no_grad():
-        model_output = model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
-        # Perform pooling. In this case, cls pooling.
-        sentence_embeddings = model_output.pooler_output
-    # normalize embeddings
-    sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
-    return sentence_embeddings
-
-
-def get_top_k(source: torch.Tensor, target: torch.Tensor, top_k: int = 5):
-    # sim: [source_num, target_num]
-    sim = torch.matmul(source, target.T)
-    sim = sim.T
-    # get index: [target_num, source_num]
-    _, sim_index = torch.sort(sim, descending=True)
-    sim_index = sim_index.cpu().numpy()
-    # index: [target_num, top_k]
-    sim_index = sim_index[:, :top_k]
-    sim_index = sim_index.tolist()
-    index_count = []
-    for i in sim_index:
-        index_count.extend(i)
-    index_count = dict(Counter(index_count))
-    print(index_count)
-    index_count = sorted(index_count.items(), key=lambda x: x[1], reverse=True)
-    index_list_top_k = [i[0] for i in index_count[:top_k]]
-    return index_list_top_k
+def get_top(s_list, t_list):
+    """
+    get top k by post
+    :return:
+    """
+    try:
+        res = requests.post('http://192.168.1.111:9001/api/get_top',
+                            json={"source": s_list, "target": t_list})
+        res_data = res.json()
+        if len(res_data['data']) > 0:
+            code = res_data['code']
+            return code, res_data['data']
+        else:
+            return 500, 'not match'
+    except Exception as e:
+        return 500, str(e)
 
 
 def update_deal_status(cursor, title_list_top_k):
@@ -77,19 +58,11 @@ def update_deal_status(cursor, title_list_top_k):
 def main():
     # database
     # 连接到 SQLite 数据库
-    conn = sqlite3.connect('mydatabase.db')
+    conn = sqlite3.connect('../mydatabase.db')
     # 创建一个 Cursor:
     cursor = conn.cursor()
 
-    # Load model from HuggingFace Hub
-    print('Loading model...')
-    tokenizer = AutoTokenizer.from_pretrained('BAAI/bge-large-en-v1.5')
-    model = AutoModel.from_pretrained('BAAI/bge-large-en-v1.5')
-    model.cuda()
-    model.eval()
-    print('Model loaded.')
-
-    target_sentences = [
+    source_sentences = [
         'Exploring the latest advancements in large language model fine-tuning, focusing on parameter-efficient methods and their effectiveness in various NLP tasks.',
         'Investigating the role of prompt engineering in enhancing the performance of large language models, including the development of hard and soft prompts for context-specific applications.',
         'Analyzing in-context learning strategies within large language models to improve understanding and application of complex language tasks.',
@@ -100,16 +73,15 @@ def main():
 
     # 从数据库获取所有的未read的title和abstract
     title_abstract_list = load_title_abstract(cursor)
-    # 获取source_embedding
-    print('Getting source embedding...')
-    source_sentence_embeddings = get_embedding([title + '.' + abstract for title, abstract in title_abstract_list],
-                                               model, tokenizer)
-    # 获取target_embedding
-    print('Getting target embedding...')
-    target_sentence_embeddings = get_embedding(target_sentences, model, tokenizer)
+    target_sentences = [title + '.' + abstract for title, abstract in title_abstract_list]
+
     # 获取top_k
     print('Getting top_k...')
-    index_list_top_k = get_top_k(source_sentence_embeddings, target_sentence_embeddings, top_k=5)
+    code, index_list_top_k = get_top(source_sentences, target_sentences)
+    if code != 200:
+        print('Failed to get top_k.', index_list_top_k)
+        return
+
     # 1.更新deal_status状态
     print('Updating deal_status...')
     title_list_top_k = [title_abstract_list[i][0] for i in index_list_top_k]

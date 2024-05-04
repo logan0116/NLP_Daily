@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from texttable import Texttable
 import sqlite3
 import time
+import re
 
 
 def print_table(table: list, header: list):
@@ -52,7 +53,7 @@ def get_pdf_link(soup):
     pdf_link_list = []
     for item in soup.select('.list-identifier'):
         pdf_link = item.select('a')[1]['href']
-        pdf_link_list.append(f'Link: https://arxiv.org{pdf_link}')
+        pdf_link_list.append(f'https://arxiv.org{pdf_link}')
     return pdf_link_list
 
 
@@ -72,9 +73,17 @@ def get_title(soup):
 
 def get_abstract(soup):
     abstract_list = []
-    for item in soup.select('p.mathjax'):
-        abstract = item.get_text(separator=' ', strip=True)
-        abstract_list.append(abstract)
+    # 获取每个论文项目的容器
+    for item in soup.select('.meta'):
+        # 检查是否存在摘要的段落
+        abstract = item.find('p', class_='mathjax')
+        if abstract:
+            # 使用.strip()来去除多余的空白字符
+            abstract_text = abstract.get_text(separator=' ', strip=True)
+        else:
+            # 如果没有找到摘要，添加一个空字符串作为占位符
+            abstract_text = ''
+        abstract_list.append(abstract_text)
     return abstract_list
 
 
@@ -89,17 +98,32 @@ def main():
     # 使用BeautifulSoup解析HTML内容
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # 获取论文标题
-    title_list = get_title(soup)
+    title_list, authors_list, pdf_link_list, abstract_list = [], [], [], []
+    author_dict = {}
 
-    # 获取论文作者
-    author_dict, authors_list = get_author_info(soup)
-
-    # 获取论文PDF链接
-    pdf_link_list = get_pdf_link(soup)
-
-    # 获取论文摘要
-    abstract_list = get_abstract(soup)
+    for tag in ['New submissions', 'Cross']:
+        # 定位到New submissions的<h3>标签
+        h3_tag = soup.find('h3', string=re.compile(tag))
+        print(h3_tag)
+        # 假设需要的论文信息紧随该<h3>标签之后
+        soup_sub = h3_tag.find_next_sibling('dl')
+        # 获取论文标题
+        title_list_temp = get_title(soup_sub)
+        # add
+        title_list.extend(title_list_temp)
+        # 获取论文作者
+        author_dict_temp, authors_list_temp = get_author_info(soup_sub)
+        # add
+        author_dict.update(author_dict_temp)
+        authors_list.extend(authors_list_temp)
+        # 获取论文PDF链接
+        pdf_link_list_temp = get_pdf_link(soup_sub)
+        # add
+        pdf_link_list.extend(pdf_link_list_temp)
+        # 获取论文摘要
+        abstract_list_temp = get_abstract(soup_sub)
+        # add
+        abstract_list.extend(abstract_list_temp)
 
     # 打印表格
     print_table(zip([i + 1 for i in range(len(title_list))], title_list, pdf_link_list),
@@ -119,7 +143,7 @@ def insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_d
     :param author_dict:
     :return:
     """
-    conn = sqlite3.connect('mydatabase.db')
+    conn = sqlite3.connect('../mydatabase.db')
     cursor = conn.cursor()
 
     local_date = time.strftime("%Y-%m-%d", time.localtime())
