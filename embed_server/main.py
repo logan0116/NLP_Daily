@@ -56,11 +56,11 @@ async def get_top_index(search_info: GetTopReqItem):
     try:
         # 获取top的index
         top_index, top_sim_score = get_top(source_emb, target_emb, top_k=top_k, top_threshold=top_threshold)
-        t_list_output = [t_list[i] for i in top_index]
-
+        print(top_index)
+        print(top_sim_score)
         # 释放显存
         del source_emb, target_emb
-        return GetTopResItem(code=200, msg='Success', data=t_list_output)
+        return GetTopResItem(code=200, msg='Success', data=top_index)
     except Exception as e:
         del source_emb, target_emb
         return GetTopResItem(code=500, msg=str(e), data=[])

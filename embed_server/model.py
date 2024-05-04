@@ -24,4 +24,4 @@ class GetTopReqItem(BaseModel):
 class GetTopResItem(BaseModel):
     code: int
     msg: str
-    data: List[str]
+    data: List

@@ -37,7 +37,7 @@ def get_embed(sentences, model, tokenizer):
     sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
     # 释放显存
     del input_ids, attention_mask, token_type_ids, model_output
-    return sentence_embeddings[0]
+    return sentence_embeddings
 
 
 def get_top(source: torch.Tensor, target: torch.Tensor, top_k, top_threshold):
