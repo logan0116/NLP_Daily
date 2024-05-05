@@ -10,7 +10,7 @@
 import json
 import sqlite3
 import time
-import fitz
+# import fitz
 import os
 
 
@@ -36,7 +36,7 @@ def get_script_save_path():
     :return:
     """
     local_time = time.strftime("%Y-%m-%d", time.localtime())
-    script_save_path = 'video_script/{}'.format(local_time)
+    script_save_path = '../script/{}'.format(local_time)
     # mkdir
     if not os.path.exists(script_save_path):
         os.mkdir(script_save_path)
@@ -59,36 +59,36 @@ def save_title_abstract(title_list, abstract_list, script_save_path):
         json.dump(title_abstract_list, f, ensure_ascii=False, indent=4)
 
 
-def get_image_from_pdf(pdf_path_list, script_save_path):
-    """
-    从pdf中提取图片
-    :param pdf_path_list:
-    :param script_save_path:
-    :return:
-    """
-    for pdf_index, pdf_path in enumerate(pdf_path_list):
-        images_save_path = os.path.join(script_save_path, 'images_{}'.format(pdf_index + 1))
-        if not os.path.exists(images_save_path):
-            os.mkdir(images_save_path)
-        doc = fitz.open(pdf_path)
-        lenXREF = doc.xref_length()
-
-        image_index = 0
-        for xref in range(1, lenXREF):
-            if doc.xref_get_key(xref, "Subtype")[1] != "/Image":  # not an image
-                continue
-
-            imgdict = doc.extract_image(xref)
-            imgdata = imgdict["image"]  # image data
-            imgext = imgdict["ext"]  # image extension
-
-            image_index += 1
-            imgname = os.path.join(images_save_path, 'image_{}.{}'.format(image_index, imgext))
-            ofile = open(imgname, "wb")
-            ofile.write(imgdata)
-            ofile.close()
-
-        print(f"Image saved at {images_save_path}")
+# def get_image_from_pdf(pdf_path_list, script_save_path):
+#     """
+#     从pdf中提取图片
+#     :param pdf_path_list:
+#     :param script_save_path:
+#     :return:
+#     """
+#     for pdf_index, pdf_path in enumerate(pdf_path_list):
+#         images_save_path = os.path.join(script_save_path, 'images_{}'.format(pdf_index + 1))
+#         if not os.path.exists(images_save_path):
+#             os.mkdir(images_save_path)
+#         doc = fitz.open(pdf_path)
+#         lenXREF = doc.xref_length()
+#
+#         image_index = 0
+#         for xref in range(1, lenXREF):
+#             if doc.xref_get_key(xref, "Subtype")[1] != "/Image":  # not an image
+#                 continue
+#
+#             imgdict = doc.extract_image(xref)
+#             imgdata = imgdict["image"]  # image data
+#             imgext = imgdict["ext"]  # image extension
+#
+#             image_index += 1
+#             imgname = os.path.join(images_save_path, 'image_{}.{}'.format(image_index, imgext))
+#             ofile = open(imgname, "wb")
+#             ofile.write(imgdata)
+#             ofile.close()
+#
+#         print(f"Image saved at {images_save_path}")
 
 
 def update_deal_read_status(cursor, id_list):
@@ -106,7 +106,7 @@ def update_deal_read_status(cursor, id_list):
 def main():
     # database
     # 连接到 SQLite 数据库
-    conn = sqlite3.connect('mydatabase.db')
+    conn = sqlite3.connect('../mydatabase.db')
     # 创建一个 Cursor:
     cursor = conn.cursor()
     # 创建一个路径，用于存放提取的信息
@@ -115,8 +115,8 @@ def main():
     id_list, title_list, abstract_list, pdf_path_list = get_info(cursor)
     # 保存title和abstract
     save_title_abstract(title_list, abstract_list, script_save_path)
-    # get image from pdf
-    get_image_from_pdf(pdf_path_list, script_save_path)
+    # # get image from pdf
+    # get_image_from_pdf(pdf_path_list, script_save_path)
     # 更新数据库
     print('Start updating database...')
     update_deal_read_status(cursor, id_list)

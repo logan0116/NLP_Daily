@@ -34,7 +34,7 @@ def get_download_path():
     :return:
     """
     local_time = time.strftime("%Y-%m-%d", time.localtime())
-    download_path = 'paper/{}'.format(local_time)
+    download_path = '../paper/{}'.format(local_time)
     # mkdir
     if not os.path.exists(download_path):
         os.mkdir(download_path)
@@ -77,7 +77,7 @@ def update_pdf_path(cursor, id_list, pdf_path_list):
 def main():
     # database
     # 连接到 SQLite 数据库
-    conn = sqlite3.connect('mydatabase.db')
+    conn = sqlite3.connect('../mydatabase.db')
     # 创建一个 Cursor:
     cursor = conn.cursor()
     # 从数据库获取所有的pdf链接
