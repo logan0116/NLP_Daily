@@ -87,52 +87,6 @@ def get_abstract(soup):
     return abstract_list
 
 
-def main():
-    # arXiv的NLP相关论文列表的URL（这里需要替换为实际的URL）
-    url = 'https://arxiv.org/list/cs/new'
-
-    # 发送请求
-    response = requests.get(url)
-    response.raise_for_status()  # 确保请求成功
-
-    # 使用BeautifulSoup解析HTML内容
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    title_list, authors_list, pdf_link_list, abstract_list = [], [], [], []
-    author_dict = {}
-
-    for tag in ['New submissions', 'Cross']:
-        # 定位到New submissions的<h3>标签
-        h3_tag = soup.find('h3', string=re.compile(tag))
-        print(h3_tag)
-        # 假设需要的论文信息紧随该<h3>标签之后
-        soup_sub = h3_tag.find_next_sibling('dl')
-        # 获取论文标题
-        title_list_temp = get_title(soup_sub)
-        # add
-        title_list.extend(title_list_temp)
-        # 获取论文作者
-        author_dict_temp, authors_list_temp = get_author_info(soup_sub)
-        # add
-        author_dict.update(author_dict_temp)
-        authors_list.extend(authors_list_temp)
-        # 获取论文PDF链接
-        pdf_link_list_temp = get_pdf_link(soup_sub)
-        # add
-        pdf_link_list.extend(pdf_link_list_temp)
-        # 获取论文摘要
-        abstract_list_temp = get_abstract(soup_sub)
-        # add
-        abstract_list.extend(abstract_list_temp)
-
-    # 打印表格
-    print_table(zip([i + 1 for i in range(len(title_list))], title_list, pdf_link_list),
-                header=['Index', 'Title', 'PDF Link'])
-
-    # 将数据插入数据库
-    insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_dict)
-
-
 def insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_dict):
     """
     将数据插入数据库
@@ -148,18 +102,27 @@ def insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_d
 
     local_date = time.strftime("%Y-%m-%d", time.localtime())
 
+    title_list_new = []
+    pdf_link_list_new = []
+
     for title, abstract, pdf_link, authors in zip(title_list, abstract_list, pdf_link_list, authors_list):
         # 检查title是否已存在
         cursor.execute("SELECT id FROM papers WHERE title = ?", (title,))
         paper_record = cursor.fetchone()
         if paper_record:
+            # already exist
             paper_id = paper_record[0]
+
         else:
             # 插入新的论文
             cursor.execute(
                 "INSERT INTO papers (title, abstract, pdf_url, pdf_path, date, deal_status, if_read) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (title, abstract, pdf_link, '', local_date, False, False))
             paper_id = cursor.lastrowid
+
+            # add to new list
+            title_list_new.append(title)
+            pdf_link_list_new.append(pdf_link)
 
         for author in authors:
             # 检查作者是否已存在
@@ -185,6 +148,54 @@ def insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_d
 
     # 关闭 Connection:
     conn.close()
+
+    # print new
+    # 打印表格
+    local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print('New papers in database at {}:'.format(local_time))
+    print_table(zip([i + 1 for i in range(len(title_list))], title_list_new, pdf_link_list_new),
+                header=['Index', 'Title', 'PDF Link'])
+
+
+def main():
+    # arXiv的NLP相关论文列表的URL（这里需要替换为实际的URL）
+    url = 'https://arxiv.org/list/cs/new'
+
+    # 发送请求
+    response = requests.get(url)
+    response.raise_for_status()  # 确保请求成功
+
+    # 使用BeautifulSoup解析HTML内容
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    title_list, authors_list, pdf_link_list, abstract_list = [], [], [], []
+    author_dict = {}
+
+    for tag in ['New submissions', 'Cross']:
+        # 定位到New submissions的<h3>标签
+        h3_tag = soup.find('h3', string=re.compile(tag))
+        # 假设需要的论文信息紧随该<h3>标签之后
+        soup_sub = h3_tag.find_next_sibling('dl')
+        # 获取论文标题
+        title_list_temp = get_title(soup_sub)
+        # add
+        title_list.extend(title_list_temp)
+        # 获取论文作者
+        author_dict_temp, authors_list_temp = get_author_info(soup_sub)
+        # add
+        author_dict.update(author_dict_temp)
+        authors_list.extend(authors_list_temp)
+        # 获取论文PDF链接
+        pdf_link_list_temp = get_pdf_link(soup_sub)
+        # add
+        pdf_link_list.extend(pdf_link_list_temp)
+        # 获取论文摘要
+        abstract_list_temp = get_abstract(soup_sub)
+        # add
+        abstract_list.extend(abstract_list_temp)
+
+    # 将数据插入数据库
+    insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_dict)
 
 
 if __name__ == '__main__':
