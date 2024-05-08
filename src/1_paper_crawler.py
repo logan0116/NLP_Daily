@@ -47,13 +47,24 @@ def get_author_info(soup):
 
 
 def get_pdf_link(soup):
-    # <a href="/abs/2311.12798" title="Abstract">arXiv:2311.12798</a>
-    # <a href="/pdf/2311.12798" title="Download PDF">pdf</a>
-    # <a href="/format/2311.12798" title="Other formats">other</a>
+    """
+    <dt data-vivaldi-translated="">
+      <a name="item1" data-vivaldi-translated="">[1]</a>
+      <a href="/abs/2405.03695" title="Abstract" id="2405.03695" data-vivaldi-translated="">arXiv:2405.03695</a>
+      <a href="/pdf/2405.03695" title="Download PDF" id="pdf-2405.03695" aria-labelledby="pdf-2405.03695" data-vivaldi-translated="">pdf</a>,
+      <a href="/ps/2405.03695" title="Download PostScript" id="ps-2405.03695" aria-labelledby="ps-2405.03695" data-vivaldi-translated="">ps</a>, <a href="/format/2405.03695" title="Other formats" id="oth-2405.03695" aria-labelledby="oth-2405.03695" data-vivaldi-translated="">other</a>]
+    </dt>
+
+
+    :param soup:
+    :return:
+    """
     pdf_link_list = []
-    for item in soup.select('.list-identifier'):
-        pdf_link = item.select('a')[1]['href']
-        pdf_link_list.append(f'https://arxiv.org{pdf_link}')
+    for item in soup.find_all('dt'):
+        links = item.find_all('a', title="Download PDF")
+        if links:
+            pdf_link = links[0]['href']  # Assume the first link with title "Download PDF" is the correct one.
+            pdf_link_list.append(f'https://arxiv.org{pdf_link}')
     return pdf_link_list
 
 
@@ -174,8 +185,8 @@ def main():
     for tag in ['New submissions', 'Cross']:
         # 定位到New submissions的<h3>标签
         h3_tag = soup.find('h3', string=re.compile(tag))
-        # 假设需要的论文信息紧随该<h3>标签之后
-        soup_sub = h3_tag.find_next_sibling('dl')
+        # 需要的论文信息在<h3>标签上一级的<dl>中
+        soup_sub = h3_tag.find_parent('dl')
         # 获取论文标题
         title_list_temp = get_title(soup_sub)
         # add
@@ -193,6 +204,11 @@ def main():
         abstract_list_temp = get_abstract(soup_sub)
         # add
         abstract_list.extend(abstract_list_temp)
+
+    print('Title:', len(title_list))
+    print('Authors:', len(authors_list))
+    print('PDF Link:', len(pdf_link_list))
+    print('Abstract:', len(abstract_list))
 
     # 将数据插入数据库
     insert_data(title_list, abstract_list, pdf_link_list, authors_list, author_dict)

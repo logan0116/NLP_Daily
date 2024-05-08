@@ -20,14 +20,15 @@ def get_info(cursor):
     :return:
     """
     # 从数据库获取所有的未read的title和abstract
-    cursor.execute('SELECT id, title, abstract, pdf_path FROM papers  WHERE deal_status = TRUE')
+    cursor.execute('SELECT id, title, abstract, pdf_path,pdf_url FROM papers  WHERE deal_status = TRUE')
     info_list = cursor.fetchall()
     id_list = [info[0] for info in info_list]
     title_list = [info[1] for info in info_list]
     abstract_list = [info[2] for info in info_list]
     pdf_path_list = [info[3] for info in info_list]
+    pdf_url_list = [info[4] for info in info_list]
 
-    return id_list, title_list, abstract_list, pdf_path_list
+    return id_list, title_list, abstract_list, pdf_path_list, pdf_url_list
 
 
 def get_script_save_path():
@@ -43,20 +44,21 @@ def get_script_save_path():
     return script_save_path
 
 
-def save_title_abstract(title_list, abstract_list, script_save_path):
+def save_title_abstract(title_list, abstract_list, pdf_url_list, script_save_path):
     """
     保存title和abstract
     :param title_list:
     :param abstract_list:
+    :param pdf_url_list:
     :param script_save_path:
     :return:
     """
-    title_abstract_list = []
-    for title, abstract in zip(title_list, abstract_list):
-        title_abstract_list.append({'title': title, 'abstract': abstract})
+    paper_info_list = []
+    for title, abstract, pdf_url in zip(title_list, abstract_list, pdf_url_list):
+        paper_info_list.append({'title': title, 'abstract': abstract, 'pdf_url': pdf_url})
 
     with open(os.path.join(script_save_path, 'inputs.json'), 'w', encoding='utf-8') as f:
-        json.dump(title_abstract_list, f, ensure_ascii=False, indent=4)
+        json.dump(paper_info_list, f, ensure_ascii=False, indent=4)
 
 
 # def get_image_from_pdf(pdf_path_list, script_save_path):
@@ -112,9 +114,9 @@ def main():
     # 创建一个路径，用于存放提取的信息
     script_save_path = get_script_save_path()
     # 从数据库获取所有deal_status为TRUE的title和abstract和pdf_path
-    id_list, title_list, abstract_list, pdf_path_list = get_info(cursor)
+    id_list, title_list, abstract_list, pdf_path_list, pdf_url_list = get_info(cursor)
     # 保存title和abstract
-    save_title_abstract(title_list, abstract_list, script_save_path)
+    save_title_abstract(title_list, abstract_list, pdf_url_list, script_save_path)
     # # get image from pdf
     # get_image_from_pdf(pdf_path_list, script_save_path)
     # 更新数据库
