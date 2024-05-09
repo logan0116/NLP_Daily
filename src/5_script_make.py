@@ -8,6 +8,7 @@
 @Date    ：2023/11/27 上午12:10 
 """
 
+from openai import OpenAI
 import openai
 import time
 import json
@@ -54,6 +55,46 @@ def text_generation(each_prompt: list):
     return message
 
 
+def text_generation_deepseek_v2(each_prompt: list):
+    """
+    example
+
+    curl https://api.openai.com/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -d '{
+        "model": "No models available",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful assistant."
+          },
+          {
+            "role": "user",
+            "content": "Hello!"
+          }
+        ]
+      }'
+
+    :param each_prompt:
+    :return:
+    """
+
+    client = OpenAI(api_key="", base_url="https://api.deepseek.com/")
+    start_time = time.time()
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=each_prompt
+    )
+    end_time = time.time()
+    message = response.choices[0].message.content
+    print('time: ', end_time - start_time)
+    print(message)
+    if end_time - start_time < 20:
+        time.sleep(20 - (end_time - start_time))
+    return message
+
+
 def make_script():
     local_time = time.strftime("%Y-%m-%d", time.localtime())
     script_text_input_path = '../script/{}/inputs.json'.format(local_time)
@@ -73,7 +114,7 @@ def make_script():
         """},
                        {"role": "user", "content": title_abstract['title'] + '\n' + title_abstract['abstract']},
                        {"role": "assistant", "content": ''}]
-        message = text_generation(each_prompt)
+        message = text_generation_deepseek_v2(each_prompt)
         response_list.append(message)
 
     title_list = [title_abstract['title'] for title_abstract in paper_info_list]

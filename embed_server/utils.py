@@ -9,6 +9,7 @@
 """
 import os
 import torch
+from tqdm import tqdm
 
 
 def get_embed(sentences, model, tokenizer):
@@ -25,18 +26,31 @@ def get_embed(sentences, model, tokenizer):
                               truncation=True,
                               return_tensors='pt',
                               max_length=512)
-    input_ids = encoded_input['input_ids'].cuda()
-    attention_mask = encoded_input['attention_mask'].cuda()
-    token_type_ids = encoded_input['token_type_ids'].cuda()
+    input_ids = encoded_input['input_ids']
+    attention_mask = encoded_input['attention_mask']
+    token_type_ids = encoded_input['token_type_ids']
     # Compute token embeddings
-    with torch.no_grad():
-        model_output = model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
-        # Perform pooling. In this case, cls pooling.
-        sentence_embeddings = model_output.pooler_output
+
+    batch_size = 16
+    sentence_embeddings = []
+    for i in tqdm(range(0, len(input_ids), batch_size)):
+        with torch.no_grad():
+            input_ids_temp = input_ids[i:i + batch_size].cuda()
+            attention_mask_temp = attention_mask[i:i + batch_size].cuda()
+            token_type_ids_temp = token_type_ids[i:i + batch_size].cuda()
+
+            model_output = model(input_ids=input_ids_temp,
+                                 attention_mask=attention_mask_temp,
+                                 token_type_ids=token_type_ids_temp)
+
+            # Perform pooling. In this case, cls pooling.
+            model_output = model_output.pooler_output.cpu().numpy().tolist()
+            # to list
+            sentence_embeddings.extend(model_output)
+    # to tensor
+    sentence_embeddings = torch.tensor(sentence_embeddings)
     # normalize embeddings
     sentence_embeddings = torch.nn.functional.normalize(sentence_embeddings, p=2, dim=1)
-    # 释放显存
-    del input_ids, attention_mask, token_type_ids, model_output
     return sentence_embeddings
 
 
