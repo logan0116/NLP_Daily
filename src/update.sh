@@ -6,10 +6,10 @@
 
 
 
-echo "1. Start crawling papers..."
-python3 1_paper_crawler.py
-echo "2. Start screening papers..."
-python3 2_paper_screen.py
+#echo "1. Start crawling papers..."
+#python3 1_paper_crawler.py
+#echo "2. Start screening papers..."
+#python3 2_paper_screen.py
 echo "3. Start downloading pdfs..."
 python3 3_download_pdf.py
 echo "4. Start extracting information..."

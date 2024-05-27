@@ -39,15 +39,15 @@ def text_generation(each_prompt: list):
     :return:
     """
     model_engine = "gpt-3.5-turbo"
-    openai.api_key = ""
+    client = OpenAI(api_key="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")
 
     start_time = time.time()
-    completions = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model_engine,
         messages=each_prompt
     )
     end_time = time.time()
-    message = completions.choices[0].message.content
+    message = response.choices[0].message.content
     print('time: ', end_time - start_time)
     print(message)
     if end_time - start_time < 20:
@@ -80,7 +80,7 @@ def text_generation_deepseek_v2(each_prompt: list):
     :return:
     """
 
-    client = OpenAI(api_key="", base_url="https://api.deepseek.com/")
+    client = OpenAI(api_key="sk-ed30c8ecdb974f168e4162cb7f1d2fb6", base_url="https://api.deepseek.com/")
     start_time = time.time()
     response = client.chat.completions.create(
         model="deepseek-chat",
