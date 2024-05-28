@@ -69,12 +69,12 @@ def get_node_paper():
             paper_id = paper['id']
             title = paper['title']
             year = paper['year']
-            # abstract = paper['abstract']
+            abstract = paper['abstract']
             # keywords = paper['keywords']
             doi = paper['doi']
             paper_id2info[paper_id] = {'title': title,
                                        'year': year,
-                                       # 'abstract': abstract,
+                                       'abstract': abstract,
                                        # 'keywords': keywords,
                                        'doi': doi}
 

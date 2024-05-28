@@ -36,12 +36,12 @@ def disrupt_single(node, node2neighbor_left, node2neighbor_right):
     """
 
     if len(node2neighbor_left[node]) == 0 or len(node2neighbor_right[node]) == 0:
-        return 0
+        return 0, len(node2neighbor_right[node])
 
-    target_set_1 = node2neighbor_left[node]
+    target_set_1 = node2neighbor_right[node]
     target_set_2 = set()
-    for neighbor in node2neighbor_right[node]:
-        target_set_2 = target_set_2 | node2neighbor_left[neighbor]
+    for neighbor in node2neighbor_left[node]:
+        target_set_2 = target_set_2 | node2neighbor_right[neighbor]
 
     # ni node in target_set_1 not in target_set_2
     ni = len(target_set_1 - target_set_2)
@@ -50,7 +50,7 @@ def disrupt_single(node, node2neighbor_left, node2neighbor_right):
     # nk node in target_set_2 not in target_set_1
     nk = len(target_set_2 - target_set_1)
 
-    return (ni - nj) / (ni + nj + nk)
+    return (ni - nj) / (ni + nj + nk), len(node2neighbor_right[node])
 
 
 def disrupt(node2neighbor_left, node2neighbor_right, time_point):
@@ -80,13 +80,31 @@ def main(paper_id2reference, time_point):
     node2neighbor_left, node2neighbor_right = get_neighbors(paper_id2reference, time_point)
     node2disrupt = disrupt(node2neighbor_left, node2neighbor_right, time_point)
     # save disrupt
-    with open('graph/link/paper_id2disrupt_{}.json'.format(time_point), 'w') as f:
+    with open('graph/indicator/paper_id2disrupt_{}.json'.format(time_point), 'w') as f:
         json.dump(node2disrupt, f)
 
 
-if __name__ == '__main__':
-    with open('graph/indicator/paper_id2reference.json', 'r') as f:
-        paper_id2reference = json.load(f)
+# if __name__ == '__main__':
+#     with open('graph/link/paper_id2reference.json', 'r') as f:
+#         paper_id2reference = json.load(f)
+#
+#     for time_point in range(2000, 2023):
+#         main(paper_id2reference, time_point=time_point)
 
-    for time_point in range(2000, 2024):
-        main(paper_id2reference, time_point=time_point)
+with open('graph/link/paper_id2reference.json', 'r') as f:
+    paper_id2reference = json.load(f)
+for time_point in range(2000, 2023):
+
+    node2neighbor_left, node2neighbor_right = get_neighbors(paper_id2reference, time_point)
+    with open('graph/indicator/paper_id2disrupt_{}.json'.format(time_point), 'r') as f:
+        node2disrupt = json.load(f)
+    node2disrupt_new = {}
+    for node, disrupt in node2disrupt.items():
+        if disrupt == 0:
+            node2disrupt_new[node] = [0, len(node2neighbor_right[node])]
+        else:
+            node2disrupt_new[node] = disrupt
+
+    # save
+    with open('graph/indicator/paper_id2disrupt_{}.json'.format(time_point), 'w') as f:
+        json.dump(node2disrupt_new, f)
