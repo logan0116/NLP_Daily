@@ -10,7 +10,7 @@
 import json
 import sqlite3
 import time
-# import fitz
+import pdfplumber
 import os
 
 
@@ -44,53 +44,51 @@ def get_script_save_path():
     return script_save_path
 
 
-def save_title_abstract(title_list, abstract_list, pdf_url_list, script_save_path):
+def save_title_abstract(title_list, abstract_list, context_list, pdf_url_list, script_save_path):
     """
     保存title和abstract
     :param title_list:
     :param abstract_list:
+    :param context_list:
     :param pdf_url_list:
     :param script_save_path:
     :return:
     """
     paper_info_list = []
-    for title, abstract, pdf_url in zip(title_list, abstract_list, pdf_url_list):
-        paper_info_list.append({'title': title, 'abstract': abstract, 'pdf_url': pdf_url})
+    for title, abstract, context, pdf_url in zip(title_list, abstract_list, context_list, pdf_url_list):
+        paper_info = {
+            'title': title,
+            'abstract': abstract,
+            'context': context,
+            'pdf_url': pdf_url
+        }
+        paper_info_list.append(paper_info)
 
     with open(os.path.join(script_save_path, 'inputs.json'), 'w', encoding='utf-8') as f:
         json.dump(paper_info_list, f, ensure_ascii=False, indent=4)
 
 
-# def get_image_from_pdf(pdf_path_list, script_save_path):
-#     """
-#     从pdf中提取图片
-#     :param pdf_path_list:
-#     :param script_save_path:
-#     :return:
-#     """
-#     for pdf_index, pdf_path in enumerate(pdf_path_list):
-#         images_save_path = os.path.join(script_save_path, 'images_{}'.format(pdf_index + 1))
-#         if not os.path.exists(images_save_path):
-#             os.mkdir(images_save_path)
-#         doc = fitz.open(pdf_path)
-#         lenXREF = doc.xref_length()
-#
-#         image_index = 0
-#         for xref in range(1, lenXREF):
-#             if doc.xref_get_key(xref, "Subtype")[1] != "/Image":  # not an image
-#                 continue
-#
-#             imgdict = doc.extract_image(xref)
-#             imgdata = imgdict["image"]  # image data
-#             imgext = imgdict["ext"]  # image extension
-#
-#             image_index += 1
-#             imgname = os.path.join(images_save_path, 'image_{}.{}'.format(image_index, imgext))
-#             ofile = open(imgname, "wb")
-#             ofile.write(imgdata)
-#             ofile.close()
-#
-#         print(f"Image saved at {images_save_path}")
+def get_info_from_pdf(pdf_path_list):
+    """
+    提取文本 based on pdfplumber
+        主要目的是提取pdf中的introduction部分
+    :param pdf_path_list:
+    :return:
+    """
+    text_list = []
+    for pdf_path in pdf_path_list:
+        text = ''
+        with pdfplumber.open(pdf_path) as pdf:
+            for i in range(min(3, len(pdf.pages))):
+                page = pdf.pages[i]
+                text += page.extract_text()
+
+        if 'Introduction' in text:
+            text = text[text.index('Introduction') + len('Introduction'):]
+
+        text_list.append(text.strip())
+
+    return text_list
 
 
 def update_deal_read_status(cursor, id_list):
@@ -115,10 +113,10 @@ def main():
     script_save_path = get_script_save_path()
     # 从数据库获取所有deal_status为TRUE的title和abstract和pdf_path
     id_list, title_list, abstract_list, pdf_path_list, pdf_url_list = get_info(cursor)
+    # get image from pdf
+    context_list = get_info_from_pdf(pdf_path_list)
     # 保存title和abstract
-    save_title_abstract(title_list, abstract_list, pdf_url_list, script_save_path)
-    # # get image from pdf
-    # get_image_from_pdf(pdf_path_list, script_save_path)
+    save_title_abstract(title_list, abstract_list, context_list, pdf_url_list, script_save_path)
     # 更新数据库
     print('Start updating database...')
     update_deal_read_status(cursor, id_list)

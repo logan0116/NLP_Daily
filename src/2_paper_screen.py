@@ -32,7 +32,7 @@ def get_top(s_list, t_list):
     :return:
     """
     try:
-        res = requests.post('http://192.168.1.111:9001/api/get_top',
+        res = requests.post('http://192.168.1.115:9001/api/get_top',
                             json={"source": s_list, "target": t_list})
         res_data = res.json()
         if len(res_data['data']) > 0:
