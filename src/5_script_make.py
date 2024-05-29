@@ -17,24 +17,10 @@ from utils import text_generation
 
 def load_prompt():
     # load prompt
+    with open('prompt/system_prompt.txt', 'r', encoding='utf-8') as f:
+        system_prompt = f.read()
 
-    # 研究问题
-    with open('prompt/system_prompt_research_question.txt', 'r', encoding='utf-8') as f:
-        prompt_research_question = f.read()
-    # 研究gap
-    with open('prompt/system_prompt_research_gap.txt', 'r', encoding='utf-8') as f:
-        prompt_research_gap = f.read()
-    # 研究内容及方法
-    with open('prompt/system_prompt_research_content.txt', 'r', encoding='utf-8') as f:
-        prompt_research_content = f.read()
-    # 介绍
-    with open('prompt/system_prompt_introduce.txt', 'r', encoding='utf-8') as f:
-        prompt_introduce = f.read()
-
-    return {'research_question': prompt_research_question,
-            'research_gap': prompt_research_gap,
-            'research_content': prompt_research_content,
-            'introduce': prompt_introduce}
+    return system_prompt
 
 
 def export_script(title_list, response_list, url_list, local_time):
@@ -54,14 +40,8 @@ def export_script(title_list, response_list, url_list, local_time):
         f.write(start)
         for index, (title, response, url) in enumerate(zip(title_list, response_list, url_list)):
             f.write('## '.format(index + 1) + title + '\n')
-            # research question
-            f.write('**研究问题**：' + response['research_question'] + '\n')
-            # research gap
-            f.write('**研究缺口**：' + response['research_gap'] + '\n')
-            # research content
-            f.write('**研究内容及方法**：' + response['research_content'] + '\n')
             # 介绍
-            f.write(response['introduce'] + '\n')
+            f.write(response + '\n')
             # pdf link
             f.write('Pdf Link: ' + url + '\n\n')
         f.write(end + '\n')
@@ -76,16 +56,6 @@ def make_prompt_research(prompt, title, abstract, context):
     return each_prompt
 
 
-def make_prompt_introduce(prompt, title, abstract, context, research_question, research_gap, research_content):
-    each_prompt = [
-        {"role": "system", "content": prompt},
-        {"role": "user",
-         "content": f"Title: {title}\nAbstract: {abstract}\nContext: {context}\n\nResearch Question: {research_question}\nResearch Gap: {research_gap}\nResearch Content: {research_content}"},
-        {"role": "assistant", "content": ''}
-    ]
-    return each_prompt
-
-
 def make_script():
     local_time = time.strftime("%Y-%m-%d", time.localtime())
     script_text_input_path = '../script/{}/inputs.json'.format(local_time)
@@ -95,23 +65,14 @@ def make_script():
     response_list = []
 
     # load prompt
-    prompt_dict = load_prompt()  # research question, research gap, research content, introduce
+    system_prompt = load_prompt()
 
     for title_abstract in paper_info_list:
         # response
-        response = {}
-        for prompt, prompt_context in prompt_dict.items():
-            title, abstract, context = title_abstract['title'], title_abstract['abstract'], title_abstract['context']
-            if prompt in ['research_question', 'research_gap', 'research_content']:
-                each_prompt = make_prompt_research(prompt_context, title, abstract, context)
-            else:
-                each_prompt = make_prompt_introduce(prompt_context, title, abstract, context,
-                                                    response['research_question'], response['research_gap'],
-                                                    response['research_content'])
-
-            message = text_generation(each_prompt, mode='deepseek')
-            response[prompt] = message.strip()
-        response_list.append(response)
+        title, abstract, context = title_abstract['title'], title_abstract['abstract'], title_abstract['context']
+        each_prompt = make_prompt_research(system_prompt, title, abstract, context)
+        message = text_generation(each_prompt, mode='deepseek')
+        response_list.append(message.strip())
 
     title_list = [title_abstract['title'] for title_abstract in paper_info_list]
     url_list = [title_abstract['pdf_url'] for title_abstract in paper_info_list]
